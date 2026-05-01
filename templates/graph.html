@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>群关系图谱</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 2560px;
+  height: 1440px;
+  overflow: hidden;
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  position: relative;
+  background: #e8eef8;
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 30%, rgba(180, 200, 255, 0.55) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 70% at 90% 70%, rgba(255, 190, 230, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 50% at 50% 0%, rgba(200, 230, 255, 0.40) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 40% at 70% 20%, rgba(220, 200, 255, 0.35) 0%, transparent 45%),
+    linear-gradient(145deg, #dde8f8 0%, #eee4f5 40%, #f5e8ee 70%, #e8f0fb 100%);
+}
+
+.bg-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(100, 120, 200, 0.12) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 4px 24px rgba(100, 120, 200, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.header {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  height: 70px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 30;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.title-main {
+  display: flex;
+  align-items: center;
+  font-size: 21px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6b7fff 0%, #b06bff 50%, #ff6bb5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 42px;
+}
+
+.title-sub {
+  font-size: 12px;
+  color: rgba(80, 90, 140, 0.6);
+  margin-top: 3px;
+  letter-spacing: 0.06em;
+}
+
+.stats-time {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  margin-left: 12px;
+}
+
+.stats-time-block {
+  min-width: 68px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  color: rgba(92, 102, 166, 0.78);
+}
+
+.stats-time-date {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+}
+
+.stats-time-value {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+
+.stats-time-divider {
+  position: relative;
+  width: 28px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.stats-time-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(107, 127, 255, 0.72), rgba(255, 107, 181, 0.58));
+  transform: translateY(-50%);
+}
+
+.header-right {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.hstat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.hstat-v {
+  font-size: 17px;
+  font-weight: 700;
+  color: #7c6bff;
+  line-height: 1;
+}
+
+.hstat-l {
+  font-size: 9px;
+  color: rgba(80, 90, 150, 0.5);
+  margin-top: 2px;
+  letter-spacing: 0.06em;
+}
+
+.hdiv {
+  width: 1px;
+  height: 24px;
+  background: rgba(120, 130, 200, 0.2);
+}
+
+.main-layout {
+  position: absolute;
+  top: 90px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.floating-legend,
+.sb-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  color: rgba(80, 90, 150, 0.45);
+  text-transform: uppercase;
+  margin-bottom: 9px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.floating-legend {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: 182px;
+  border-radius: 16px;
+  padding: 16px 16px 14px;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.leg-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  color: rgba(80, 90, 150, 0.55);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leg-title::before,
+.sb-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #7c6bff, #ff6bb5);
+}
+
+.leg-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  color: rgba(60, 70, 130, 0.75);
+  margin-bottom: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.leg-line {
+  width: 20px;
+  height: 2.5px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.leg-line.f { background: linear-gradient(90deg, #34d399, #6ee7b7); }
+.leg-line.n { background: linear-gradient(90deg, #94a3b8, #b0bcd4); }
+.leg-line.t { background: linear-gradient(90deg, #f87171, #fca5a5); }
+
+.leg-sep {
+  height: 1px;
+  background: rgba(120, 130, 200, 0.15);
+  margin: 8px 0;
+}
+
+.leg-node-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 9px;
+  font-size: 12px;
+  color: rgba(60, 70, 130, 0.65);
+  line-height: 1.45;
+  margin-bottom: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.leg-cluster-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(60, 70, 130, 0.65);
+  margin-bottom: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+.leg-cluster-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.leg-node-text,
+.leg-cluster-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  line-height: 1.45;
+}
+
+.graph-area {
+  flex: 1;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  background: rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 4px 24px rgba(100, 120, 200, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+#graph-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sidebar {
+  width: 356px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 13px 11px;
+  overflow: hidden;
+}
+
+.sb-section {
+  margin-bottom: 9px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(120, 130, 200, 0.12);
+}
+
+.sb-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.rank-list,
+.story-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.rank-list { gap: 5px; }
+.story-list { gap: 6px; }
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rank-no {
+  width: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.rank-no.g1 { color: #f59e0b; }
+.rank-no.g2 { color: #9ca3af; }
+.rank-no.g3 { color: #b45309; }
+.rank-no.gn { color: rgba(80, 90, 150, 0.4); }
+
+.rank-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(100, 120, 200, 0.18);
+}
+
+.rank-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.rank-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rank-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(40, 50, 110, 0.88);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rank-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.rank-bar-bg {
+  flex: 1;
+  height: 2.5px;
+  background: rgba(120, 130, 200, 0.14);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.rank-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.rank-count {
+  font-size: 9px;
+  color: rgba(80, 90, 150, 0.4);
+  flex-shrink: 0;
+}
+
+.cluster-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.cluster-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.cluster-name {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+.cluster-members {
+  font-size: 9.5px;
+  color: rgba(60, 70, 130, 0.5);
+  line-height: 1.5;
+}
+
+.story-item {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(200, 210, 240, 0.6);
+  border-radius: 8px;
+  padding: 8px 9px;
+  box-shadow: 0 2px 8px rgba(100, 120, 200, 0.06);
+}
+
+.story-pair {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b5fff;
+  margin-bottom: 5px;
+  line-height: 1.45;
+}
+
+.story-pair span {
+  color: rgba(100, 110, 180, 0.45);
+  font-weight: 300;
+  margin: 0 3px;
+}
+
+.story-text {
+  font-size: 10.2px;
+  color: rgba(60, 70, 130, 0.6);
+  line-height: 1.62;
+}
+
+.topic-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.topic-tag {
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 10.2px;
+  font-weight: 500;
+  border: 1px solid;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.atmos-box {
+  background: linear-gradient(135deg, rgba(200, 210, 255, 0.3), rgba(255, 200, 230, 0.25));
+  border: 1px solid rgba(180, 190, 240, 0.45);
+  border-radius: 8px;
+  padding: 10px 11px;
+  font-size: 11px;
+  color: rgba(50, 60, 120, 0.7);
+  line-height: 1.72;
+  min-height: 158px;
+  word-break: break-word;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.timestamp {
+  position: absolute;
+  bottom: 14px;
+  right: 24px;
+  font-size: 9px;
+  color: rgba(80, 90, 150, 0.3);
+  letter-spacing: 0.05em;
+  z-index: 30;
+}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="bg-dots"></div>
+
+<div class="header glass">
+  <div class="header-left">
+    <div>
+    <div class="title-row">
+      <div class="title-main">「{{ group_name }}」关系图谱</div>
+      <div class="stats-time">
+        <div class="stats-time-block">
+          <div class="stats-time-date">{{ stats_start_date }}</div>
+          <div class="stats-time-value">{{ stats_start_time }}</div>
+        </div>
+        <span class="stats-time-divider"></span>
+        <div class="stats-time-block">
+          <div class="stats-time-date">{{ stats_end_date }}</div>
+          <div class="stats-time-value">{{ stats_end_time }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="title-sub">{{ analysis_desc }}</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="hstat"><div class="hstat-v" id="member-count">-</div><div class="hstat-l">活跃成员</div></div>
+    <div class="hdiv"></div>
+    <div class="hstat"><div class="hstat-v" id="link-count">-</div><div class="hstat-l">关系连接</div></div>
+    <div class="hdiv"></div>
+    <div class="hstat"><div class="hstat-v" id="community-count">-</div><div class="hstat-l">小团体</div></div>
+    <div class="hdiv"></div>
+    <div class="hstat"><div class="hstat-v" id="msg-count">-</div><div class="hstat-l">消息总数</div></div>
+  </div>
+</div>
+
+<div class="main-layout">
+  <div class="graph-area">
+    <div class="floating-legend glass">
+      <div class="leg-title">关系类型</div>
+      <div class="leg-item"><div class="leg-line f"></div>友好互动</div>
+      <div class="leg-item"><div class="leg-line n"></div>普通互动</div>
+      <div class="leg-item"><div class="leg-line t"></div>存在争论</div>
+
+      <div class="leg-sep"></div>
+      <div class="leg-title">节点说明</div>
+      <div class="leg-node-item">
+        <svg width="14" height="14" style="flex-shrink:0;margin-top:1px">
+          <circle cx="7" cy="7" r="7" fill="url(#lgn)"/>
+          <defs>
+            <radialGradient id="lgn">
+              <stop offset="0%" stop-color="#a78bfa"/>
+              <stop offset="100%" stop-color="#7c6bff"/>
+            </radialGradient>
+          </defs>
+        </svg>
+        <div class="leg-node-text">大小代表活跃度</div>
+      </div>
+      <div class="leg-node-item">
+        <svg width="14" height="14" style="flex-shrink:0;margin-top:1px">
+          <circle cx="7" cy="7" r="5.5" fill="none" stroke="#7c6bff" stroke-width="1.7"/>
+        </svg>
+        <div class="leg-node-text">边框色代表所属团体</div>
+      </div>
+      <div class="leg-node-item">
+        <svg width="14" height="14" style="flex-shrink:0;margin-top:1px">
+          <circle cx="7" cy="7" r="5.5" fill="none" stroke="#94a3b8" stroke-width="1.7" stroke-dasharray="3 2"/>
+        </svg>
+        <div class="leg-node-text">游离成员以灰色虚线边框表示</div>
+      </div>
+
+      <div class="leg-sep"></div>
+      <div class="leg-title">小团体</div>
+      <div id="legend-clusters"></div>
+    </div>
+    <svg id="graph-svg"></svg>
+  </div>
+
+  <div class="sidebar glass">
+    <div class="sb-section">
+      <div class="sb-title">本期活跃排行</div>
+      <div class="rank-list" id="rank-list"></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-title">最强关系 Top 3</div>
+      <div class="story-list" id="story-list"></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-title">本期热聊话题</div>
+      <div class="topic-list" id="topic-list"></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-title">群氛围分析</div>
+      <div class="atmos-box" id="atmos-box"></div>
+    </div>
+  </div>
+</div>
+
+<div class="timestamp">AstrBot · group_graph · {{ timestamp }}</div>
+
+<script>
+const graphData = {{ graph_data | safe }};
+
+const members = graphData.nodes || [];
+const links = graphData.links || [];
+const communities = graphData.communities || [];
+const lonerIds = graphData.loner_ids || [];
+const lonerIdSet = new Set(lonerIds);
+const summary = graphData.summary || {};
+
+const sentimentColor = { friendly: "#34d399", neutral: "#94a3b8", tense: "#f87171" };
+
+function lighten(hex, amt) {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, ((n >> 16) & 0xff) + Math.round(255 * amt));
+  const g = Math.min(255, ((n >> 8) & 0xff) + Math.round(255 * amt));
+  const b = Math.min(255, (n & 0xff) + Math.round(255 * amt));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+}
+
+document.getElementById("member-count").textContent = members.length;
+document.getElementById("link-count").textContent = links.length;
+document.getElementById("community-count").textContent = communities.length;
+document.getElementById("msg-count").textContent = members.reduce((s, m) => s + (m.message_count || 0), 0);
+
+const maxMsg = members.length > 0 ? Math.max(...members.map((d) => d.message_count)) : 1;
+const top5 = [...members].sort((a, b) => b.message_count - a.message_count).slice(0, 5);
+const rnkCls = ["g1", "g2", "g3", "gn", "gn"];
+const commColor = communities.map((c) => c.color);
+
+document.getElementById("rank-list").innerHTML = top5.map((m, i) => {
+  const col = commColor[m.community] || "#7c6bff";
+  const pct = top5[0] ? ((m.message_count / top5[0].message_count) * 100).toFixed(0) : "0";
+  let avatarHtml = "";
+  if (m.avatar && m.avatar.startsWith("data:image")) {
+    avatarHtml = `<img src="${m.avatar}" width="28" height="28"/>`;
+  } else {
+    const svgStr = encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"><defs><radialGradient id="g" cx="35%" cy="28%"><stop offset="0%" stop-color="${lighten(col,0.4)}"/><stop offset="100%" stop-color="${col}"/></radialGradient></defs><circle cx="14" cy="14" r="14" fill="url(#g)"/><text x="14" y="15" dominant-baseline="middle" text-anchor="middle" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="11px" font-weight="700" fill="rgba(255,255,255,0.95)">${(m.name || "?")[0]}</text></svg>`
+    );
+    avatarHtml = `<img src="data:image/svg+xml;utf8,${svgStr}" width="28" height="28"/>`;
+  }
+  return `<div class="rank-item">
+    <div class="rank-no ${rnkCls[i]}">${i + 1}</div>
+    <div class="rank-avatar">${avatarHtml}</div>
+    <div class="rank-info">
+      <div class="rank-name">${m.name || "未知"}</div>
+      <div class="rank-bar-wrap">
+        <div class="rank-bar-bg"><div class="rank-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${col},${lighten(col,0.3)});"></div></div>
+        <div class="rank-count">${m.message_count}条</div>
+      </div>
+    </div>
+  </div>`;
+}).join("");
+
+document.getElementById("legend-clusters").innerHTML = communities.map((c) => `
+  <div class="leg-cluster-item">
+    <div class="leg-cluster-dot" style="background:${c.color};box-shadow:0 0 4px ${c.color}55;"></div>
+    <div class="leg-cluster-text">${c.name}</div>
+  </div>`).join("");
+
+const top3Stories = (summary.top3_stories || []).slice(0, 3);
+document.getElementById("story-list").innerHTML = top3Stories.map((s) => `
+  <div class="story-item">
+    <div class="story-pair">${s.name_a || "?"}<span>↔</span>${s.name_b || "?"}
+      <span style="font-size:9px;color:rgba(100,110,180,0.4);margin-left:4px;">×${((s.score || 0) * 100).toFixed(0)}%</span>
+    </div>
+    <div class="story-text">${s.story || ""}</div>
+  </div>`).join("");
+
+const hotTopics = summary.hot_topics || [];
+const topicColors = ["#6b7fff", "#10b981", "#ec4899", "#8b5cf6", "#f59e0b"];
+document.getElementById("topic-list").innerHTML = hotTopics.map((t, i) => {
+  const color = topicColors[i % topicColors.length];
+  return `<div class="topic-tag" style="color:${color};background:${color}18;border-color:${color}55;"># ${t}</div>`;
+}).join("");
+
+document.getElementById("atmos-box").textContent = summary.atmosphere || "群氛围良好";
+
+const graphEl = document.querySelector(".graph-area");
+const SVG_W = graphEl.offsetWidth || 1400;
+const SVG_H = graphEl.offsetHeight || 994;
+
+const radiusScale = d3.scaleSqrt()
+  .domain([d3.min(members, (d) => d.message_count) || 0, maxMsg])
+  .range([18, 50]);
+
+const svg = d3.select("#graph-svg").attr("width", SVG_W).attr("height", SVG_H);
+const defs = svg.append("defs");
+
+const gf = defs.append("filter").attr("id", "glow").attr("x", "-60%").attr("y", "-60%").attr("width", "220%").attr("height", "220%");
+gf.append("feGaussianBlur").attr("stdDeviation", "3.5").attr("result", "blur");
+const gm2 = gf.append("feMerge");
+gm2.append("feMergeNode").attr("in", "blur");
+gm2.append("feMergeNode").attr("in", "SourceGraphic");
+
+const hf = defs.append("filter").attr("id", "halo").attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
+hf.append("feGaussianBlur").attr("stdDeviation", "20").attr("result", "blur");
+const hm2 = hf.append("feMerge");
+hm2.append("feMergeNode").attr("in", "blur");
+hm2.append("feMergeNode").attr("in", "SourceGraphic");
+
+const sf = defs.append("filter").attr("id", "shadow").attr("x", "-30%").attr("y", "-30%").attr("width", "160%").attr("height", "160%");
+sf.append("feDropShadow").attr("dx", "0").attr("dy", "3").attr("stdDeviation", "6").attr("flood-color", "rgba(100,120,200,0.18)");
+
+members.forEach((m) => {
+  const r = radiusScale(m.message_count || 1);
+  const col = commColor[m.community] || "#7c6bff";
+  defs.append("clipPath").attr("id", `clip-${m.id}`)
+    .append("circle").attr("cx", 0).attr("cy", 0).attr("r", r - 1.5);
+  const fallbackGradient = defs.append("radialGradient")
+    .attr("id", `fallback-grad-${m.id}`)
+    .attr("cx", "38%")
+    .attr("cy", "30%");
+  fallbackGradient.append("stop").attr("offset", "0%").attr("stop-color", lighten(col, 0.45));
+  fallbackGradient.append("stop").attr("offset", "100%").attr("stop-color", col);
+});
+
+const nodeData = members.map((m) => ({ ...m, radius: radiusScale(m.message_count || 1) }));
+const linkData = links.map((l) => ({ ...l }));
+const nodeById = new Map(nodeData.map((node) => [node.id, node]));
+const isLonerLink = (d) => lonerIdSet.has(d.source.id ?? d.source) || lonerIdSet.has(d.target.id ?? d.target);
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const usableBounds = {
+  left: 72,
+  top: 56,
+  right: SVG_W - 72,
+  bottom: SVG_H - 62
+};
+
+function layoutGraphToViewport(nodes, bounds) {
+  if (!nodes.length) return;
+
+  const minX = d3.min(nodes, (d) => d.x - d.radius);
+  const maxX = d3.max(nodes, (d) => d.x + d.radius);
+  const minY = d3.min(nodes, (d) => d.y - d.radius);
+  const maxY = d3.max(nodes, (d) => d.y + d.radius);
+  const layoutWidth = Math.max(1, maxX - minX);
+  const layoutHeight = Math.max(1, maxY - minY);
+  const targetWidth = Math.max(1, bounds.right - bounds.left);
+  const targetHeight = Math.max(1, bounds.bottom - bounds.top);
+
+  // 统一按当前包围盒做缩放和平移，让不同数量的社群都能尽量铺满主体画布区域。
+  const scale = Math.min(
+    1.58,
+    Math.max(
+      0.82,
+      Math.min(
+        targetWidth / layoutWidth,
+        targetHeight / layoutHeight
+      ) * 0.93
+    )
+  );
+  const layoutCenterX = (minX + maxX) / 2;
+  const layoutCenterY = (minY + maxY) / 2;
+  const targetCenterX = (bounds.left + bounds.right) / 2;
+  const targetCenterY = (bounds.top + bounds.bottom) / 2;
+
+  nodes.forEach((node) => {
+    node.x = targetCenterX + ((node.x - layoutCenterX) * scale);
+    node.y = targetCenterY + ((node.y - layoutCenterY) * scale);
+  });
+}
+
+const angles = [225, 315, 135, 45, 0, 90, 180, 270];
+const commCenters = communities.map((c, i) => {
+  const deg = angles[i % angles.length] * Math.PI / 180;
+  const dist = Math.min(SVG_W, SVG_H) * (communities.length <= 1 ? 0.26 : 0.41);
+  return { x: SVG_W / 2 + Math.cos(deg) * dist, y: SVG_H / 2 + Math.sin(deg) * dist };
+});
+
+function normalizeVector(dx, dy) {
+  const length = Math.hypot(dx, dy) || 1;
+  return { x: dx / length, y: dy / length };
+}
+
+function buildLonerAnchorLayout(lonerNodes, allLinks, memberMap, communityCenters) {
+  if (!lonerNodes.length) return;
+
+  // 先为每个游离成员挑出得分最高的连线对象，作为后续贴靠的锚点。
+  const preferredAnchorByLonerId = new Map();
+  allLinks.forEach((link) => {
+    const sourceId = link.source.id ?? link.source;
+    const targetId = link.target.id ?? link.target;
+    const relationScore = link.interaction_score ?? link.weight ?? 0;
+    const candidatePairs = [];
+
+    if (lonerIdSet.has(sourceId)) {
+      candidatePairs.push({ lonerId: sourceId, anchorId: targetId });
+    }
+    if (lonerIdSet.has(targetId)) {
+      candidatePairs.push({ lonerId: targetId, anchorId: sourceId });
+    }
+
+    candidatePairs.forEach(({ lonerId, anchorId }) => {
+      if (lonerId === anchorId) return;
+      const currentAnchor = preferredAnchorByLonerId.get(lonerId);
+      if (
+        !currentAnchor ||
+        relationScore > currentAnchor.score ||
+        (relationScore === currentAnchor.score && anchorId < currentAnchor.anchorId)
+      ) {
+        preferredAnchorByLonerId.set(lonerId, { anchorId, score: relationScore });
+      }
+    });
+  });
+
+  const anchorBucketCount = new Map();
+  const positionedLonerIds = new Set();
+  const visitingLonerIds = new Set();
+
+  function claimBucketIndex(bucketKey) {
+    const bucketIndex = anchorBucketCount.get(bucketKey) || 0;
+    anchorBucketCount.set(bucketKey, bucketIndex + 1);
+    return bucketIndex;
+  }
+
+  function placeAroundAnchor(lonerNode, anchorNode, bucketKey) {
+    const bucketIndex = claimBucketIndex(bucketKey);
+    const siblingOffset = bucketIndex - Math.floor(bucketIndex / 2) * 2 === 0
+      ? -(Math.ceil(bucketIndex / 2))
+      : Math.ceil(bucketIndex / 2);
+    const communityCenter = anchorNode.community >= 0 ? communityCenters[anchorNode.community] : null;
+    const baseDirection = communityCenter
+      ? normalizeVector(anchorNode.x - communityCenter.x, anchorNode.y - communityCenter.y)
+      : normalizeVector(anchorNode.x - lonerNode.x, anchorNode.y - lonerNode.y);
+    const perpendicularDirection = { x: -baseDirection.y, y: baseDirection.x };
+    const anchorDistance = anchorNode.radius + lonerNode.radius + (anchorNode.community >= 0 ? 56 : 42);
+    const spreadDistance = siblingOffset * (lonerNode.radius * 1.2 + 18);
+
+    lonerNode.x = anchorNode.x + (baseDirection.x * (anchorDistance + Math.abs(siblingOffset) * 10)) + (perpendicularDirection.x * spreadDistance);
+    lonerNode.y = anchorNode.y + (baseDirection.y * (anchorDistance + Math.abs(siblingOffset) * 10)) + (perpendicularDirection.y * spreadDistance);
+  }
+
+  function placeFallback(lonerNode, lonerIndex) {
+    const fallbackAngle = (-Math.PI / 2) + (lonerIndex * 0.78);
+    const fallbackRadius = Math.min(SVG_W, SVG_H) * 0.12 + ((lonerIndex % 3) * 22);
+    lonerNode.x = (SVG_W / 2) + Math.cos(fallbackAngle) * fallbackRadius;
+    lonerNode.y = (SVG_H / 2) + Math.sin(fallbackAngle) * (fallbackRadius * 0.78);
+  }
+
+  function resolveLonerPosition(lonerNode, lonerIndex) {
+    if (positionedLonerIds.has(lonerNode.id)) return;
+
+    const preferredAnchor = preferredAnchorByLonerId.get(lonerNode.id);
+    const anchorNode = preferredAnchor ? memberMap.get(preferredAnchor.anchorId) : null;
+    if (!anchorNode) {
+      placeFallback(lonerNode, lonerIndex);
+      positionedLonerIds.add(lonerNode.id);
+      return;
+    }
+
+    if (anchorNode.community < 0 && lonerIdSet.has(anchorNode.id) && !positionedLonerIds.has(anchorNode.id)) {
+      if (visitingLonerIds.has(lonerNode.id)) {
+        placeAroundAnchor(lonerNode, anchorNode, `cycle-${anchorNode.id}`);
+        positionedLonerIds.add(lonerNode.id);
+        return;
+      }
+      visitingLonerIds.add(lonerNode.id);
+      resolveLonerPosition(anchorNode, lonerIndex + 1);
+      visitingLonerIds.delete(lonerNode.id);
+    }
+
+    const bucketKey = anchorNode.community >= 0
+      ? `community-${anchorNode.community}-${anchorNode.id}`
+      : `loner-${anchorNode.id}`;
+    placeAroundAnchor(lonerNode, anchorNode, bucketKey);
+    positionedLonerIds.add(lonerNode.id);
+  }
+
+  [...lonerNodes]
+    .sort((leftNode, rightNode) => {
+      const leftAnchor = preferredAnchorByLonerId.get(leftNode.id);
+      const rightAnchor = preferredAnchorByLonerId.get(rightNode.id);
+      const leftScore = leftAnchor?.score ?? -1;
+      const rightScore = rightAnchor?.score ?? -1;
+      if (rightScore !== leftScore) return rightScore - leftScore;
+      return leftNode.id - rightNode.id;
+    })
+    .forEach((lonerNode, lonerIndex) => {
+      resolveLonerPosition(lonerNode, lonerIndex);
+    });
+}
+
+const simulation = d3.forceSimulation(nodeData)
+  .force("link", d3.forceLink(linkData).id((d) => d.id).distance((d) => 345 - d.weight * 125).strength(0.3))
+  .force("charge", d3.forceManyBody().strength(-920))
+  .force("center", d3.forceCenter(SVG_W / 2, SVG_H / 2).strength(0.014))
+  .force("collision", d3.forceCollide().radius((d) => d.radius + 58).strength(0.97))
+  .force("community", () => {
+    nodeData.forEach((d) => {
+      if (d.community < 0) return;
+      const c = commCenters[d.community];
+      if (c) {
+        d.vx += (c.x - d.x) * 0.009;
+        d.vy += (c.y - d.y) * 0.009;
+      }
+    });
+  });
+
+for (let i = 0; i < 820; i += 1) simulation.tick();
+simulation.stop();
+
+const lonerNodes = nodeData.filter((d) => d.community < 0);
+if (lonerNodes.length > 0) {
+  // 游离成员不再统一丢到大环外，而是贴靠到自己的最强关系锚点附近。
+  buildLonerAnchorLayout(lonerNodes, linkData, nodeById, commCenters);
+}
+
+layoutGraphToViewport(nodeData, usableBounds);
+
+nodeData.forEach((d) => {
+  d.x = clamp(d.x, usableBounds.left + d.radius, usableBounds.right - d.radius);
+  d.y = clamp(d.y, usableBounds.top + d.radius, usableBounds.bottom - d.radius);
+});
+
+const haloG = svg.append("g");
+communities.forEach((c, ci) => {
+  const ns = nodeData.filter((n) => n.community === ci);
+  if (ns.length < 2) return;
+  const xs = ns.map((n) => n.x);
+  const ys = ns.map((n) => n.y);
+  const ex = (d3.max(xs) + d3.min(xs)) / 2;
+  const ey = (d3.max(ys) + d3.min(ys)) / 2;
+  const rx = (d3.max(xs) - d3.min(xs)) / 2 + 58;
+  const ry = (d3.max(ys) - d3.min(ys)) / 2 + 50;
+
+  haloG.append("ellipse")
+    .attr("cx", ex).attr("cy", ey).attr("rx", rx * 1.1).attr("ry", ry * 1.1)
+    .attr("fill", c.color).attr("opacity", 0.07).attr("filter", "url(#halo)");
+
+  haloG.append("ellipse")
+    .attr("cx", ex).attr("cy", ey).attr("rx", rx).attr("ry", ry)
+    .attr("fill", c.color).attr("fill-opacity", 0.04)
+    .attr("stroke", c.color).attr("stroke-width", 1.5)
+    .attr("stroke-opacity", 0.35).attr("stroke-dasharray", "6 4");
+
+  haloG.append("text")
+    .attr("x", ex).attr("y", ey - ry - 8)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "11.5px").attr("font-weight", "700")
+    .attr("letter-spacing", "0.06em")
+    .attr("fill", c.color).attr("opacity", 0.7)
+    .attr("font-family", "'Noto Sans SC','PingFang SC',sans-serif")
+    .text(c.name);
+});
+
+const lg = svg.append("g");
+
+lg.selectAll("path.el")
+  .data(linkData).enter().append("path").attr("class", "el")
+  .attr("fill", "none")
+  .attr("stroke", (d) => isLonerLink(d) ? "rgba(120,130,170,0.82)" : (sentimentColor[d.sentiment] || sentimentColor.neutral))
+  .attr("stroke-width", (d) => isLonerLink(d) ? 1.4 + d.weight * 2.8 : 1 + d.weight * 3.8)
+  .attr("stroke-opacity", (d) => isLonerLink(d) ? 0.72 : (0.25 + d.weight * 0.45))
+  .attr("stroke-dasharray", (d) => isLonerLink(d) ? "7 5" : null)
+  .attr("d", (d) => {
+    const dx = d.target.x - d.source.x;
+    const dy = d.target.y - d.source.y;
+    const dr = Math.sqrt(dx * dx + dy * dy) * 1.3;
+    return `M${d.source.x},${d.source.y} A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+  });
+
+const labeledLinks = linkData.filter((d) => d.weight >= 0.22 || isLonerLink(d));
+
+lg.selectAll("rect.elb")
+  .data(labeledLinks).enter().append("rect").attr("class", "elb")
+  .attr("rx", 4).attr("ry", 4)
+  .attr("fill", (d) => isLonerLink(d) ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.78)")
+  .attr("stroke", (d) => isLonerLink(d) ? "rgba(120,130,170,0.78)" : (sentimentColor[d.sentiment] || sentimentColor.neutral))
+  .attr("stroke-width", 0.7).attr("stroke-opacity", 0.5)
+  .each(function(d) {
+    const w = (d.label || "").length * 8 + 14;
+    const h = 16;
+    const mx = (d.source.x + d.target.x) / 2;
+    const my = (d.source.y + d.target.y) / 2;
+    d3.select(this).attr("width", w).attr("height", h).attr("x", mx - w / 2).attr("y", my - h + 2);
+  });
+
+lg.selectAll("text.elt")
+  .data(labeledLinks).enter().append("text").attr("class", "elt")
+  .attr("x", (d) => (d.source.x + d.target.x) / 2)
+  .attr("y", (d) => (d.source.y + d.target.y) / 2 - 3)
+  .attr("text-anchor", "middle").attr("dominant-baseline", "middle")
+  .attr("font-size", "10px")
+  .attr("fill", (d) => {
+    if (isLonerLink(d)) return "#667085";
+    const c = { friendly: "#059669", neutral: "#64748b", tense: "#dc2626" };
+    return c[d.sentiment] || c.neutral;
+  })
+  .attr("font-weight", "500").attr("opacity", 0.9)
+  .attr("font-family", "'Noto Sans SC','PingFang SC',sans-serif")
+  .text((d) => d.label || "");
+
+lg.selectAll("text.ec")
+  .data(linkData.filter((d) => d.weight > 0.56)).enter()
+  .append("text").attr("class", "ec")
+  .attr("x", (d) => (d.source.x + d.target.x) / 2)
+  .attr("y", (d) => (d.source.y + d.target.y) / 2 + 10)
+  .attr("text-anchor", "middle")
+  .attr("font-size", "8.5px").attr("fill", "rgba(80,90,140,0.38)")
+  .attr("font-family", "'Noto Sans SC','PingFang SC',sans-serif")
+  .text((d) => `×${(d.interaction_score || d.weight).toFixed(2)}`);
+
+const ng2 = svg.append("g");
+const nodeEl = ng2.selectAll("g.nd")
+  .data(nodeData).enter().append("g").attr("class", "nd")
+  .attr("transform", (d) => `translate(${d.x},${d.y})`);
+
+nodeEl.append("circle")
+  .attr("r", (d) => d.radius + 5)
+  .attr("fill", "rgba(255,255,255,0.55)")
+  .attr("filter", "url(#shadow)");
+
+nodeEl.filter((d) => d.message_count > 130)
+  .append("circle")
+  .attr("r", (d) => d.radius + 8).attr("fill", "none")
+  .attr("stroke", (d) => commColor[d.community] || "#7c6bff")
+  .attr("stroke-width", 1.5).attr("stroke-opacity", 0.28)
+  .attr("filter", "url(#glow)");
+
+nodeEl.append("circle")
+  .attr("r", (d) => d.radius + 2.5).attr("fill", "none")
+  .attr("stroke", (d) => d.community < 0 ? "#94a3b8" : (commColor[d.community] || "#7c6bff"))
+  .attr("stroke-width", (d) => d.community < 0 ? 2 : 2.5)
+  .attr("stroke-opacity", 0.9)
+  .attr("stroke-dasharray", (d) => d.community < 0 ? "4 2" : "none")
+  .attr("filter", "url(#glow)");
+
+nodeEl.filter((d) => d.avatar && d.avatar.startsWith("data:image"))
+  .append("image")
+  .attr("x", (d) => -(d.radius - 1.5))
+  .attr("y", (d) => -(d.radius - 1.5))
+  .attr("width", (d) => (d.radius - 1.5) * 2)
+  .attr("height", (d) => (d.radius - 1.5) * 2)
+  .attr("href", (d) => d.avatar)
+  .attr("preserveAspectRatio", "xMidYMid slice")
+  .attr("clip-path", (d) => `url(#clip-${d.id})`);
+
+nodeEl.filter((d) => !(d.avatar && d.avatar.startsWith("data:image")))
+  .append("circle")
+  .attr("r", (d) => d.radius - 1.5)
+  .attr("fill", (d) => `url(#fallback-grad-${d.id})`)
+  .attr("clip-path", (d) => `url(#clip-${d.id})`);
+
+nodeEl.filter((d) => !(d.avatar && d.avatar.startsWith("data:image")))
+  .append("text")
+  .attr("text-anchor", "middle")
+  .attr("dominant-baseline", "middle")
+  .attr("font-family", "'Noto Sans SC','PingFang SC',sans-serif")
+  .attr("font-size", (d) => `${Math.max(14, d.radius * 0.68)}px`)
+  .attr("font-weight", "700")
+  .attr("fill", "rgba(255,255,255,0.95)")
+  .text((d) => (d.name || "?")[0] || "?");
+
+nodeEl.append("ellipse")
+  .attr("cx", (d) => -d.radius * 0.12).attr("cy", (d) => -d.radius * 0.42)
+  .attr("rx", (d) => d.radius * 0.44).attr("ry", (d) => d.radius * 0.2)
+  .attr("fill", "rgba(255,255,255,0.22)").attr("pointer-events", "none");
+
+nodeEl.append("text")
+  .attr("y", (d) => d.radius + 15).attr("text-anchor", "middle")
+  .attr("font-size", (d) => `${Math.max(10, Math.min(13, 9 + ((d.message_count || 0) / maxMsg) * 4))}px`)
+  .attr("font-weight", "700").attr("fill", "rgba(40,50,110,0.88)")
+  .attr("font-family", "'Noto Sans SC','PingFang SC',sans-serif")
+  .text((d) => d.name.length > 6 ? `${d.name.slice(0, 6)}…` : d.name);
+
+nodeEl.append("text")
+  .attr("y", (d) => d.radius + 28).attr("text-anchor", "middle")
+  .attr("font-size", "9px").attr("font-weight", "300")
+  .attr("fill", (d) => d.community < 0 ? "#94a3b8" : (commColor[d.community] || "#7c6bff"))
+  .attr("opacity", 0.75)
+  .attr("font-family", "'Noto Sans SC','PingFang SC',sans-serif")
+  .text((d) => `${d.message_count || 0} 条`);
+
+const rdy = document.createElement("div");
+rdy.id = "graph-ready";
+document.body.appendChild(rdy);
+</script>
+</body>
+</html>

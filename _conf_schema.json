@@ -1,0 +1,68 @@
+{
+    "llm_provider_id": {
+        "type": "string",
+        "description": "关系图谱分析使用的 LLM Provider ID；留空时使用当前会话默认模型",
+        "default": "",
+        "_special": "select_provider"
+    },
+    "cooldown_seconds": {
+        "type": "int",
+        "default": 60,
+        "description": "同一群触发指令的冷却时间（秒）"
+    },
+    "allow_member": {
+        "type": "bool",
+        "default": false,
+        "description": "是否允许普通成员触发；关闭时仅 Bot 管理员可用"
+    },
+    "include_bot_messages": {
+        "type": "bool",
+        "default": false,
+        "description": "是否将机器人自己发送的消息纳入图谱分析"
+    },
+    "min_message_count": {
+        "type": "int",
+        "default": 3,
+        "description": "成员最少发言数，低于该值不纳入图谱"
+    },
+    "max_fetch_days": {
+        "type": "int",
+        "default": 30,
+        "description": "单次拉取消息的最大时间跨度（单位：天）"
+    },
+    "default_top_n": {
+        "type": "int",
+        "default": 20,
+        "description": "默认展示互动得分最高的前 N 个成员"
+    },
+    "llm_relation_batch_size": {
+        "type": "int",
+        "default": 5,
+        "description": "单次调用 LLM 分析群关系时，最多处理多少个成员对"
+    },
+    "continuous_reply_window_sec": {
+        "type": "int",
+        "default": 120,
+        "description": "判定连续对话的时间窗口（秒）"
+    },
+    "loner_score_threshold": {
+        "type": "float",
+        "default": 0.15,
+        "description": "Leiden 划分后，若成员所在碎片过小且总边权低于该值，则判定为游离成员"
+    },
+    "community_edge_threshold": {
+        "type": "float",
+        "default": 0.16,
+        "description": "纳入 Leiden 社区识别图的最小互动得分阈值，用于过滤弱连接"
+    },
+    "max_llm_communities": {
+        "type": "int",
+        "default": 4,
+        "description": "限制 LLM 最多分析和命名多少个社群；这是上限，不要求必须输出该数量，也不会裁剪最终展示"
+    },
+    "max_hot_topics": {
+        "type": "int",
+        "default": 10,
+        "description": "热聊话题标签最多生成多少个；这是上限，实际可少于该数量"
+    }
+}
