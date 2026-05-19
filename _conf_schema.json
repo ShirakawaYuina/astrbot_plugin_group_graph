@@ -1,69 +1,82 @@
 {
     "llm_provider_id": {
         "type": "string",
-        "description": "关系图谱分析使用的 LLM Provider ID；留空时使用当前会话默认模型",
+        "description": "LLM Provider ID",
         "default": "",
-        "_special": "select_provider"
+        "_special": "select_provider",
+        "hint": "关系图谱分析使用的模型提供商。留空时使用当前会话默认模型。"
     },
     "cooldown_seconds": {
         "type": "int",
         "default": 60,
-        "description": "同一群触发指令的冷却时间（秒）"
+        "description": "指令冷却时间",
+        "hint": "同一群连续触发 group_graph 指令需要等待的时间，单位为秒。"
     },
     "allow_member": {
         "type": "bool",
         "default": false,
-        "description": "是否允许普通成员触发；关闭时仅 Bot 管理员可用"
+        "description": "允许普通成员触发",
+        "hint": "开启后群内普通成员也可触发图谱分析；关闭时仅 AstrBot 的 Bot 管理员可用。"
     },
     "include_bot_messages": {
         "type": "bool",
         "default": false,
-        "description": "是否将机器人自己发送的消息纳入图谱分析"
+        "description": "纳入机器人消息",
+        "hint": "是否将机器人自己发送的消息纳入图谱分析。通常关闭可避免机器人回复影响成员关系判断。"
     },
     "min_message_count": {
         "type": "int",
         "default": 3,
-        "description": "成员最少发言数，低于该值不纳入图谱"
+        "description": "成员最少发言数",
+        "hint": "成员发言数低于该值时不纳入图谱，用于过滤偶然发言或数据不足的成员。"
     },
     "max_fetch_days": {
         "type": "int",
         "default": 30,
-        "description": "单次拉取消息的最大时间跨度（单位：天）"
+        "description": "最大拉取天数",
+        "hint": "单次拉取群历史消息的最大时间跨度，单位为天。命令中传入更大天数时会按此值截断。"
     },
     "default_top_n": {
         "type": "int",
         "default": 20,
-        "description": "默认展示互动得分最高的前 N 个成员"
+        "description": "默认展示成员数",
+        "hint": "默认展示互动得分最高的前 N 个成员。数值越大，图谱节点越多，渲染和分析耗时也会增加。"
     },
     "llm_relation_batch_size": {
         "type": "int",
         "default": 5,
-        "description": "单次调用 LLM 分析群关系时，最多处理多少个成员对"
+        "description": "关系分析批量大小",
+        "hint": "单次调用 LLM 分析群关系时最多处理多少个成员对。较小值更稳，较大值可减少调用次数。"
     },
     "continuous_reply_window_sec": {
         "type": "int",
         "default": 120,
-        "description": "判定连续对话的时间窗口（秒）"
+        "description": "连续对话窗口",
+        "hint": "判定两条消息属于连续对话的时间窗口，单位为秒。用于计算成员之间的互动强度。"
     },
     "loner_score_threshold": {
         "type": "float",
         "default": 0.15,
-        "description": "Leiden 划分后，若成员所在碎片过小且总边权低于该值，则判定为游离成员"
+        "description": "游离成员阈值",
+        "hint": "Leiden 划分后，若成员所在碎片过小且总边权低于该值，则判定为游离成员。"
     },
     "community_edge_threshold": {
         "type": "float",
         "default": 0.16,
-        "description": "纳入 Leiden 社区识别图的最小互动得分阈值，用于过滤弱连接"
+        "description": "社群识别边阈值",
+        "hint": "纳入 Leiden 社区识别图的最小互动得分阈值，用于过滤弱连接。"
     },
     "max_llm_communities": {
         "type": "int",
         "default": 4,
-        "description": "限制 LLM 最多分析和命名多少个社群；这是上限，不要求必须输出该数量，也不会裁剪最终展示"
+        "description": "LLM 社群分析上限",
+        "hint": "限制 LLM 最多分析和命名多少个社群。这是分析上限，不要求必须输出该数量，也不会裁剪最终展示。"
     },
     "max_hot_topics": {
         "type": "int",
         "default": 10,
-        "description": "热聊话题标签最多生成多少个；这是上限，实际可少于该数量"
+        "description": "热聊话题数量",
+        "hint": "热聊话题标签最多生成多少个。这是上限，实际可少于该数量。"
     },
     "image_send_mode": {
         "type": "string",
@@ -72,11 +85,13 @@
             "base64",
             "url"
         ],
-        "description": "图片发送方式；base64 保持旧行为，url 会通过 AstrBot 文件服务生成 HTTP 图片链接并直接发给 aiocqhttp / OneBot v11"
+        "description": "图片发送方式",
+        "hint": "base64 保持旧行为；url 会通过 AstrBot 文件服务生成 HTTP 图片链接并直接发给 aiocqhttp / OneBot v11。"
     },
     "image_send_url_base": {
         "type": "string",
         "default": "",
-        "description": "图片 URL 发送基础地址，仅 image_send_mode=url 时生效；留空时使用 AstrBot 全局 callback_api_base，例如 http://astrbot:6185"
+        "description": "图片 URL 发送基础地址",
+        "hint": "仅 image_send_mode=url 时生效。留空时使用 AstrBot 全局 callback_api_base；两个容器分离时请填写 NapCat 可访问的 AstrBot 地址，例如 http://astrbot:6185。"
     }
 }

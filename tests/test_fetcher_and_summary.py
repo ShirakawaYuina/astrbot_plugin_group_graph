@@ -246,16 +246,14 @@ class CommandParsingTests(unittest.TestCase):
 
 
 class ConfigSchemaTests(unittest.TestCase):
-    def test_schema_uses_max_fetch_days_description(self):
+    def test_schema_uses_title_and_hint_for_max_fetch_days(self):
         schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
         schema_data = json.loads(schema_path.read_text(encoding="utf-8"))
 
         self.assertIn("max_fetch_days", schema_data)
         self.assertNotIn("max_fetch_count", schema_data)
-        self.assertEqual(
-            schema_data["max_fetch_days"]["description"],
-            "单次拉取消息的最大时间跨度（单位：天）",
-        )
+        self.assertEqual(schema_data["max_fetch_days"]["description"], "最大拉取天数")
+        self.assertIn("最大时间跨度", schema_data["max_fetch_days"]["hint"])
 
     def test_schema_contains_llm_relation_batch_size(self):
         schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
@@ -265,8 +263,9 @@ class ConfigSchemaTests(unittest.TestCase):
         self.assertEqual(schema_data["llm_relation_batch_size"]["default"], 5)
         self.assertEqual(
             schema_data["llm_relation_batch_size"]["description"],
-            "单次调用 LLM 分析群关系时，最多处理多少个成员对",
+            "关系分析批量大小",
         )
+        self.assertIn("最多处理多少个成员对", schema_data["llm_relation_batch_size"]["hint"])
 
     def test_schema_describes_leiden_related_thresholds_clearly(self):
         schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
@@ -274,12 +273,14 @@ class ConfigSchemaTests(unittest.TestCase):
 
         self.assertEqual(
             schema_data["loner_score_threshold"]["description"],
-            "Leiden 划分后，若成员所在碎片过小且总边权低于该值，则判定为游离成员",
+            "游离成员阈值",
         )
+        self.assertIn("Leiden 划分后", schema_data["loner_score_threshold"]["hint"])
         self.assertEqual(
             schema_data["community_edge_threshold"]["description"],
-            "纳入 Leiden 社区识别图的最小互动得分阈值，用于过滤弱连接",
+            "社群识别边阈值",
         )
+        self.assertIn("过滤弱连接", schema_data["community_edge_threshold"]["hint"])
 
     def test_schema_contains_max_hot_topics(self):
         schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
@@ -287,10 +288,8 @@ class ConfigSchemaTests(unittest.TestCase):
 
         self.assertIn("max_hot_topics", schema_data)
         self.assertEqual(schema_data["max_hot_topics"]["default"], 10)
-        self.assertEqual(
-            schema_data["max_hot_topics"]["description"],
-            "热聊话题标签最多生成多少个；这是上限，实际可少于该数量",
-        )
+        self.assertEqual(schema_data["max_hot_topics"]["description"], "热聊话题数量")
+        self.assertIn("最多生成多少个", schema_data["max_hot_topics"]["hint"])
 
     def test_schema_contains_include_bot_messages(self):
         schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
@@ -300,8 +299,9 @@ class ConfigSchemaTests(unittest.TestCase):
         self.assertFalse(schema_data["include_bot_messages"]["default"])
         self.assertEqual(
             schema_data["include_bot_messages"]["description"],
-            "是否将机器人自己发送的消息纳入图谱分析",
+            "纳入机器人消息",
         )
+        self.assertIn("机器人自己发送的消息", schema_data["include_bot_messages"]["hint"])
 
     def test_schema_contains_image_send_mode(self):
         schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
@@ -310,7 +310,21 @@ class ConfigSchemaTests(unittest.TestCase):
         self.assertIn("image_send_mode", schema_data)
         self.assertEqual(schema_data["image_send_mode"]["default"], "base64")
         self.assertEqual(schema_data["image_send_mode"]["options"], ["base64", "url"])
+        self.assertEqual(schema_data["image_send_mode"]["description"], "图片发送方式")
+        self.assertIn("OneBot v11", schema_data["image_send_mode"]["hint"])
         self.assertIn("image_send_url_base", schema_data)
+
+    def test_all_schema_items_use_short_title_descriptions_with_hints(self):
+        """配置页左侧应展示短标题，详细说明统一放到 hint 的灰色描述中。"""
+
+        schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
+        schema_data = json.loads(schema_path.read_text(encoding="utf-8"))
+
+        for key, item in schema_data.items():
+            with self.subTest(key=key):
+                self.assertLessEqual(len(item["description"]), 16)
+                self.assertIn("hint", item)
+                self.assertGreater(len(item["hint"]), 0)
 
 
 class PermissionTests(unittest.IsolatedAsyncioTestCase):
