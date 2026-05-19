@@ -64,5 +64,19 @@
         "type": "int",
         "default": 10,
         "description": "热聊话题标签最多生成多少个；这是上限，实际可少于该数量"
+    },
+    "image_send_mode": {
+        "type": "string",
+        "default": "base64",
+        "options": [
+            "base64",
+            "url"
+        ],
+        "description": "图片发送方式；base64 保持旧行为，url 会通过 AstrBot 文件服务生成 HTTP 图片链接并直接发给 aiocqhttp / OneBot v11"
+    },
+    "image_send_url_base": {
+        "type": "string",
+        "default": "",
+        "description": "图片 URL 发送基础地址，仅 image_send_mode=url 时生效；留空时使用 AstrBot 全局 callback_api_base，例如 http://astrbot:6185"
     }
 }

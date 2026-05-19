@@ -303,6 +303,15 @@ class ConfigSchemaTests(unittest.TestCase):
             "是否将机器人自己发送的消息纳入图谱分析",
         )
 
+    def test_schema_contains_image_send_mode(self):
+        schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
+        schema_data = json.loads(schema_path.read_text(encoding="utf-8"))
+
+        self.assertIn("image_send_mode", schema_data)
+        self.assertEqual(schema_data["image_send_mode"]["default"], "base64")
+        self.assertEqual(schema_data["image_send_mode"]["options"], ["base64", "url"])
+        self.assertIn("image_send_url_base", schema_data)
+
 
 class PermissionTests(unittest.IsolatedAsyncioTestCase):
     async def test_check_permission_allows_only_bot_admin_when_members_disabled(self):
@@ -972,6 +981,130 @@ class ImageSenderTests(unittest.IsolatedAsyncioTestCase):
                 "device_scale_factor_level": "high",
             },
         )
+
+    async def test_send_rendered_image_uses_event_image_result_in_base64_mode(self):
+        """默认发送模式应保持旧行为，由 AstrBot 平台适配器处理本地图片。"""
+
+        owner = SimpleNamespace()
+        event = SimpleNamespace(image_result=lambda image_path: f"image:{image_path}")
+        sender = ImageSender(owner, send_mode="unknown")
+
+        result = await sender.send_rendered_image(event, "D:/tmp/group_graph.png")
+
+        self.assertEqual(sender.send_mode, "base64")
+        self.assertEqual(result, "image:D:/tmp/group_graph.png")
+
+    async def test_send_rendered_image_sends_registered_url_to_onebot_group(self):
+        """URL 模式应注册 AstrBot 文件服务 URL，并直发到 OneBot 群聊接口。"""
+
+        owner = SimpleNamespace()
+        bot = SimpleNamespace(send_group_msg=AsyncMock(), send_private_msg=AsyncMock())
+        event = SimpleNamespace(
+            bot=bot,
+            get_platform_name=lambda: "aiocqhttp",
+            get_group_id=lambda: "223344",
+            get_sender_id=lambda: "10001",
+            image_result=lambda image_path: f"image:{image_path}",
+        )
+        sender = ImageSender(
+            owner,
+            send_mode="url",
+            url_base="http://astrbot:6185/",
+        )
+
+        with patch(
+            "data.plugins.astrbot_plugin_group_graph.rendering.sender."
+            "file_token_service"
+        ) as token_service:
+            token_service.register_file = AsyncMock(return_value="demo-token")
+
+            result = await sender.send_rendered_image(event, "D:/tmp/group_graph.png")
+
+        self.assertIsNone(result)
+        token_service.register_file.assert_awaited_once_with("D:\\tmp\\group_graph.png")
+        bot.send_group_msg.assert_awaited_once_with(
+            group_id=223344,
+            message=[
+                {
+                    "type": "image",
+                    "data": {
+                        "file": "http://astrbot:6185/api/file/demo-token",
+                    },
+                }
+            ],
+        )
+        bot.send_private_msg.assert_not_awaited()
+
+    async def test_send_rendered_image_sends_registered_url_to_onebot_private(self):
+        """URL 模式没有群号时，应使用发送者 ID 走 OneBot 私聊接口。"""
+
+        owner = SimpleNamespace()
+        bot = SimpleNamespace(send_group_msg=AsyncMock(), send_private_msg=AsyncMock())
+        event = SimpleNamespace(
+            bot=bot,
+            get_platform_name=lambda: "aiocqhttp",
+            get_group_id=lambda: "",
+            get_sender_id=lambda: "10001",
+        )
+        sender = ImageSender(
+            owner,
+            send_mode="url",
+            url_base="http://astrbot:6185",
+        )
+
+        with patch(
+            "data.plugins.astrbot_plugin_group_graph.rendering.sender."
+            "file_token_service"
+        ) as token_service:
+            token_service.register_file = AsyncMock(return_value="demo-token")
+
+            await sender.send_rendered_image(event, "D:/tmp/group_graph.png")
+
+        bot.send_group_msg.assert_not_awaited()
+        bot.send_private_msg.assert_awaited_once_with(
+            user_id=10001,
+            message=[
+                {
+                    "type": "image",
+                    "data": {
+                        "file": "http://astrbot:6185/api/file/demo-token",
+                    },
+                }
+            ],
+        )
+
+    async def test_send_rendered_image_url_mode_rejects_non_onebot_platform(self):
+        """URL 模式只支持 aiocqhttp / OneBot v11，不做静默降级。"""
+
+        owner = SimpleNamespace()
+        event = SimpleNamespace(get_platform_name=lambda: "telegram")
+        sender = ImageSender(owner, send_mode="url", url_base="http://astrbot:6185")
+
+        with self.assertRaisesRegex(RuntimeError, "aiocqhttp / OneBot v11"):
+            await sender.send_rendered_image(event, "D:/tmp/group_graph.png")
+
+    async def test_send_rendered_image_url_mode_requires_url_base(self):
+        """URL 模式缺少可访问地址时应直接失败，提示用户修正配置。"""
+
+        owner = SimpleNamespace()
+        bot = SimpleNamespace(send_group_msg=AsyncMock(), send_private_msg=AsyncMock())
+        event = SimpleNamespace(
+            bot=bot,
+            get_platform_name=lambda: "aiocqhttp",
+            get_group_id=lambda: "223344",
+            get_sender_id=lambda: "10001",
+        )
+        sender = ImageSender(owner, send_mode="url")
+
+        with (
+            patch(
+                "data.plugins.astrbot_plugin_group_graph.rendering.sender."
+                "astrbot_config"
+            ) as config,
+            self.assertRaisesRegex(RuntimeError, "image_send_url_base"),
+        ):
+            config.get.return_value = ""
+            await sender.send_rendered_image(event, "D:/tmp/group_graph.png")
 
 
 class HtmlTemplateRendererTests(unittest.TestCase):

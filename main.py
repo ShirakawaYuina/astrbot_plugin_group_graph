@@ -48,6 +48,12 @@ class GroupGraphPlugin(Star):
         )
         self.max_llm_communities = self.config.get("max_llm_communities", 4)
         self.max_hot_topics = max(1, int(self.config.get("max_hot_topics", 10) or 10))
+        self.image_send_mode = str(
+            self.config.get("image_send_mode", "base64") or "base64"
+        ).strip()
+        self.image_send_url_base = str(
+            self.config.get("image_send_url_base", "") or ""
+        ).strip()
 
         self._cooldowns: dict[str, float] = {}
         self.fetcher = MessageFetcher()
@@ -66,7 +72,11 @@ class GroupGraphPlugin(Star):
         )
         self.avatar_fetcher = AvatarFetcher()
         self.renderer = HtmlTemplateRenderer()
-        self.sender = ImageSender(self)
+        self.sender = ImageSender(
+            self,
+            send_mode=self.image_send_mode,
+            url_base=self.image_send_url_base,
+        )
 
     def _get_session_type(self, event: AstrMessageEvent) -> str:
         """根据事件判断当前会话类型，便于统一输出日志。"""
@@ -494,13 +504,17 @@ class GroupGraphPlugin(Star):
                 会话类型=session_type,
                 群组=group_id,
                 图片路径=image_path,
+                图片发送模式=self.sender.send_mode,
             )
-            yield event.image_result(image_path)
+            send_result = await self.sender.send_rendered_image(event, image_path)
+            if send_result is not None:
+                yield send_result
             self._log_analysis_event(
                 "关系图谱发送完成",
                 会话类型=session_type,
                 群组=group_id,
                 图片路径=image_path,
+                图片发送模式=self.sender.send_mode,
             )
         except Exception as exc:  # noqa: BLE001 - 需要向用户返回失败原因
             self._clear_cooldown(str(group_id))

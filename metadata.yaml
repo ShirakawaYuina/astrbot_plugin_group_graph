@@ -1,6 +1,6 @@
 name: "astrbot_plugin_group_graph"
 display_name: "qq_group_graph"
 author: "AstrBot"
-version: "v1.3"
+version: "v1.4"
 description: "基于QQ群历史消息分析成员互动关系，生成关系图谱图片"
 repo: "https://github.com/ShirakawaYuina/astrbot_plugin_group_graph"
